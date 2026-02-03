@@ -10,7 +10,7 @@ const registerUser = async (req, res) => {
         //check if user already exists
         const existingUser = await User.findOne({$or : [{ username }, { email }]})
         if(existingUser){
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Username or Email already in use. Please try with different credentials.'
             })
@@ -59,7 +59,7 @@ const loginUser = async (req, res) => {
         const user = await User.findOne({username})
 
         if(!user){
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "Invalid Credentials"
             })
@@ -68,7 +68,7 @@ const loginUser = async (req, res) => {
         const isPasswordMatch = await bcrypt.compare(password, user.password)
 
         if(!isPasswordMatch){
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "Invalid Credentials"
             })
@@ -94,18 +94,60 @@ const loginUser = async (req, res) => {
         })
     } catch (error) {
         console.log("Error logging into User -> ", error)
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: "Error logging into User"
+            message: "Something went wrong! Please try again later"
         })
     }
 }
 
-const changePassword = (req, res) => {
+const changePassword = async (req, res) => {
     try {
+        const userId = req.userInfo.userId;
         
+        //extract old and new password
+        const {oldPassword, newPassword} = req.body;
+
+
+        //find the current logged in user
+        const user = await User.findById(userId);
+        if(!user){
+            return res.status(400).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        //check if old password is correct
+        const isPasswordMatch = bcrypt.compare(oldPassword, user.password);
+        if(!isPasswordMatch){
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Credentials"
+            });
+        }
+
+
+        //hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const newhashedPassword = await bcrypt.hash(newPassword, salt);
+
+        user.password = newhashedPassword
+        await user.save()
+
+        return res.status(200).json({
+            success: true,
+            message: "Password Changed Successfully"
+        })
+        //get the authenticated user
+        //check if user id is same as id retrieved from mongodb
+        //update the data
     } catch (error) {
-        
+         console.log("Error logging into User -> ", error)
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong! Please try again later"
+        })
     }
 }
 
