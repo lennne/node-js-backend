@@ -53,11 +53,44 @@ const registerUser = async (req, res) => {
     }
 }
 
-const loginUser = (req, res) => {
+const loginUser = async (req, res) => {
     try {
         const { username, password } = req.body;
-    } catch (error) {
+        const user = await User.findOne({username})
+
+        if(!user){
+            res.status(400).json({
+                success: false,
+                message: "Invalid Credentials"
+            })
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, user.password)
+
+        if(!isPasswordMatch){
+            res.status(400).json({
+                success: false,
+                message: "Invalid Credentials"
+            })
+        }
+
+        // create user token
         
+
+        res.status(200).json({
+            success: true,
+            message: "Successfully logged in",
+            data: {
+                username: user.username,
+                role: user.role
+            }
+        })
+    } catch (error) {
+        console.log("Error logging into User -> ", error)
+        res.status(500).json({
+            success: false,
+            message: "Error logging into User"
+        })
     }
 }
 
