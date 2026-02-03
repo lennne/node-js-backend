@@ -3,6 +3,7 @@ const express = require('express');
 const connectToDB = require('./database/db');
 const bookRoutes = require('./routes/book-routes')
 const authRoutes = require('./routes/auth-routes');
+const homeRoutes = require('./routes/home-routes')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.use(express.json()) //returns a middleware which parses incoming json reques
 //routes here
 app.use('/api/book', bookRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/home', homeRoutes);
 
 
 

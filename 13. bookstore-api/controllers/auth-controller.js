@@ -75,11 +75,18 @@ const loginUser = async (req, res) => {
         }
 
         // create user token
-        
+        const accessToken = jwt.sign({
+            userId: user._id,
+            username: user.username,
+            role: user.role
+        }, process.env.JWT_SECRET_KEY, {
+            expiresIn: '15m'
+        });
 
         res.status(200).json({
             success: true,
             message: "Successfully logged in",
+            accessToken,
             data: {
                 username: user.username,
                 role: user.role
