@@ -1,9 +1,10 @@
 require('dotenv').config()
 const express = require('express');
 const connectToDB = require('./database/db');
-const bookRoutes = require('./routes/book-routes')
+const bookRoutes = require('./routes/book-routes');
 const authRoutes = require('./routes/auth-routes');
-const homeRoutes = require('./routes/home-routes')
+const homeRoutes = require('./routes/home-routes');
+const adminRoutes = require('./routes/admin-routes')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.use(express.json()) //returns a middleware which parses incoming json reques
 app.use('/api/book', bookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 
