@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/lennne/node-js-backend#readme",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "mongoose": "^9.1.5"
   }
 }

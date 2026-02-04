@@ -1,0 +1,547 @@
+diff --git a/13. bookstore-api/controllers/image-controller.js b/13. bookstore-api/controllers/image-controller.js
+index 2ecb5bc..74bd8b7 100644
+--- a/13. bookstore-api/controllers/image-controller.js	
++++ b/13. bookstore-api/controllers/image-controller.js	
+@@ -1,5 +1,6 @@
+ const Image = require("../models/Image")
+ const {uploadToCloudinary} = require('../helpers/cloudinaryHelper')
++const cloudinary = require('../config/cloudinary');
+ const fs = require('fs')
+ 
+ 
+@@ -30,7 +31,7 @@ const uploadImageController = async(req, res) => {
+         // fs.unlinkSync(req.file.path)
+ 
+ 
+-        res.status(201).json({
++        return res.status(201).json({
+             success: true,
+             message: 'Image uploaded successfully',
+             image: newlyUploadedImage
+@@ -39,7 +40,7 @@ const uploadImageController = async(req, res) => {
+         
+     }catch(error){
+         console.log("Error uploading image -> ", error);
+-        res.status(500).json({
++        return res.status(500).json({
+             success: false,
+             message: "Something went wrong! Please try again "
+         })
+@@ -51,14 +52,59 @@ const getImagesController = async(req, res) => {
+         const images = await Image.find({});
+ 
+         if(images){
+-            res.status(200).json({
++            return res.status(200).json({
+                 success: true,
+                 data: images
+             })
+         }
+     } catch (error) {
+         console.log("Error fetching image -> ", error);
+-        res.status(500).json({
++        return res.status(500).json({
++            success: false,
++            message: "Something went wrong! Please try again "
++        })
++    }
++}
++
++const deleteImageController = async (req, res) => {
++    try {
++        //get the user which is deleting the image
++        const getCurrentIdOfImageToBeDeleted = req.params.id;
++        const userId = req.userInfo.userId;
++
++
++
++        //get the image id to find out whether the user deleting the image was the person that created the image
++        const image = await Image.findById(getCurrentIdOfImageToBeDeleted);
++
++        if(!image){
++            return res.status(400).json({
++                success: false,
++                message: "Resource not found"
++            })
++        }
++        
++        if(image.uploadedBy.toString() !== userId){
++            return res.status(400).json({
++                success: false,
++                message: "You are not allowed to delete this resource because you did not upload it"
++            })
++        }
++
++        //delete froom cloudinary storage, once that is successful then delete from database
++        await cloudinary.uploader.destroy(image.publicId);
++
++        //delete this image from mongodb database
++        await Image.findByIdAndDelete(getCurrentIdOfImageToBeDeleted)
++
++        return res.status(200).json({
++            success: false,
++            message: "Deleted Image Successfully"
++        })
++                
++    }catch(error){
++           console.log("Error Deleting image -> ", error);
++        return res.status(500).json({
+             success: false,
+             message: "Something went wrong! Please try again "
+         })
+@@ -67,5 +113,6 @@ const getImagesController = async(req, res) => {
+ 
+ module.exports = {
+     uploadImageController,
+-    getImagesController
++    getImagesController,
++    deleteImageController
+ }
+\ No newline at end of file
+diff --git a/13. bookstore-api/routes/image-routes.js b/13. bookstore-api/routes/image-routes.js
+index ca8b67b..dcb6138 100644
+--- a/13. bookstore-api/routes/image-routes.js	
++++ b/13. bookstore-api/routes/image-routes.js	
+@@ -1,13 +1,16 @@
+ const express = require('express');
+ const authMiddleware = require('../middleware/auth-middleware');
+ const verifyRole = require('../middleware/verify-roles');
+-const { uploadImageController, getImagesController } = require('../controllers/image-controller');
++const { uploadImageController, getImagesController, deleteImageController } = require('../controllers/image-controller');
+ const uploadMiddleware = require('../middleware/upload-middleware');
+ const router = express.Router();
+ 
+ //upload Image
+ router.post('/upload', authMiddleware, verifyRole, uploadMiddleware.single('image'), uploadImageController);
+ router.get('/', authMiddleware, getImagesController)
++router.delete('/:id', authMiddleware, verifyRole, deleteImageController)
++
+ //get all the images
+ 
++
+ module.exports = router
+\ No newline at end of file
+diff --git a/mongodb-basics/app.js b/14. mongodb-basics/app.js
+similarity index 100%
+rename from mongodb-basics/app.js
+rename to 14. mongodb-basics/app.js
+diff --git a/mongodb-basics/index.js b/14. mongodb-basics/index.js
+similarity index 100%
+rename from mongodb-basics/index.js
+rename to 14. mongodb-basics/index.js
+diff --git a/15. mongodb-intermediate/controller/book-controller.js b/15. mongodb-intermediate/controller/book-controller.js
+new file mode 100644
+index 0000000..9160fe4
+--- /dev/null
++++ b/15. mongodb-intermediate/controller/book-controller.js	
+@@ -0,0 +1,63 @@
++const Author = require('../models/Author')
++const Book = require('../models/Book')
++
++const createAuthorController = async (req, res) => {
++    try {
++        const author = req.body;
++        const newAuthor = Author(author)
++        await newAuthor.save()
++        return res.status(200).json({
++            success: true,
++            message: "Successfully added Author",
++            data: newAuthor
++        })
++    } catch (error) {
++        console.log(error)
++        return res.status(500).json({
++            success: false,
++            message: "Something went wrong"
++        })
++    }
++}
++
++const createBookController = async (req, res) => {
++    try{
++        const book = req.body;
++        const newBook = await Book(book)
++        await newBook.save()
++
++        return res.status(200).json({
++            success: true,
++            message: "Created Book successfully",
++            data: newBook
++        })
++    }catch(error){
++        console.log(error);
++        return res.status(500).json({
++            success: false,
++            message: "Something went wrong"
++        })
++    }
++}
++
++const getBookController = async (req, res) => {
++    try{
++        const bookId = req.params.id;
++        const newBook = await Book.findById(bookId).populate('author')
++
++        return res.status(200).json({
++            success: true,
++            message: "Retrieved Book successfully",
++            data: newBook
++        })
++    }catch(error){
++        console.log(error);
++        return res.status(500).json({
++            success: false,
++            message: "Something went wrong"
++        })
++    }
++}
++
++
++module.exports = { createAuthorController, createBookController, getBookController}
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/controller/product-controller.js b/15. mongodb-intermediate/controller/product-controller.js
+new file mode 100644
+index 0000000..bbcd380
+--- /dev/null
++++ b/15. mongodb-intermediate/controller/product-controller.js	
+@@ -0,0 +1,168 @@
++const Product = require('../models/Product');
++
++
++const insertSampleProducts = async (req, res) => {
++    try {
++        console.log("insert samaple products")
++        const sampleProducts = [
++            {
++                name: 'Laptop',
++                category: 'Electronics',
++                price: 999,
++                inStock: true,
++                tags: ["computer", "tech"]
++            },
++            {
++                name: 'Smartphone',
++                category: 'Electronics',
++                price: 699,
++                inStock: true,
++                tags: ["mobile", "tech"]
++            },
++            {
++                name: 'Headphones',
++                category: 'Electronics',
++                price: 199,
++                inStock: false,
++                tags: ["audio", "tech"]
++            },
++            {
++                name: 'Running Shoes',
++                category: 'Sports',
++                price: 89,
++                inStock: true,
++                tags: ["footwear", "running"]
++            },
++            {
++                name: 'Novel',
++                category: 'Books',
++                price: 15,
++                inStock: true,
++                tags: ["fiction", "bestseller"]
++            }
++        ];
++
++        const result = await Product.insertMany(sampleProducts);
++        return res.status(200).json({
++            success: true,
++            message: `Inserted ${result.length} sample products`
++        })
++    } catch (error) {
++        console.log(e);
++        return res.status(500).json({
++            success: false,
++            message: 'Some error occured'
++        })
++    }
++}
++
++const getProductStats = async(req, res) => {
++    try {
++        const result = await Product.aggregate([
++            {
++                $match: {
++                    inStock: true,
++                    price: {
++                        $gte: 100
++                    }
++                }
++            },
++            {
++                $group: {
++                    _id: "$category",
++                    avgPrice: {
++                        $avg: "$price",
++                    },
++                    count: {
++                        $sum: 1,
++                    },
++                },
++            },
++        ])
++
++        return res.status(200).json({
++            success: true,
++            data: result
++        })
++    } catch (error) {
++          console.log(e);
++        return res.status(500).json({
++            success: false,
++            message: 'Some error occured'
++        })
++    }
++}
++
++const getProductAnalysis = async (req, res) => {
++    try{
++        const result = await Product.aggregate([
++            {
++                $match: {
++                    category: "Electronics"
++                }
++            },
++            {
++                $group: {
++                    _id: null,
++                    totalRevenue: {
++                        $sum: "$price" 
++                },
++                    averagePrice: {
++                        $avg: "$price"  
++                },
++                    maxProductPrice: {
++                        $max: "$price"
++                },
++                    minProductPrice: {
++                        $min: "$price"
++                    
++                },
++                    totalRevenue: {
++                        $sum: "$price"
++                    
++                },
++                
++                    averagePrice: {
++                        $avg: "$price"
++                    
++                },
++                
++                    maxProductPrice: {
++                        $max: "$price"
++                    
++                },
++                
++                    minProductPrice: {
++                        $min: "$price"
++                    
++                },
++                    },
++            },
++            {
++                $project: {
++                    _id: 0,
++                    totalRevenue: 1,
++                    averagePrice: 1,
++                    maxProductPrice: 1,
++                    minProductPrice: 1,
++                    priceRange: {
++                        $subtract: ["$maxProductPrice", "$minProductPrice"]
++                    }
++                }
++            }
++        ])
++
++        return res.status(200).json({
++            success: true,
++            data: result
++        })
++    }catch(error){
++            console.log(error);
++        return res.status(500).json({
++            success: false,
++            message: 'Some error occured'
++        })
++    }
++}
++
++module.exports = { insertSampleProducts, getProductStats, getProductAnalysis }
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/database/db.js b/15. mongodb-intermediate/database/db.js
+new file mode 100644
+index 0000000..840359e
+--- /dev/null
++++ b/15. mongodb-intermediate/database/db.js	
+@@ -0,0 +1,10 @@
++const mongoose = require('mongoose');
++async function connectToDB(){
++    return await mongoose.connect(process.env.MONGO_URI)
++    .then(() => console.log("mongodb connected successfully"))
++    .catch((e) => console.log(e));
++}
++
++module.exports = {
++    connectToDB
++}
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/models/Author.js b/15. mongodb-intermediate/models/Author.js
+new file mode 100644
+index 0000000..3338bc6
+--- /dev/null
++++ b/15. mongodb-intermediate/models/Author.js	
+@@ -0,0 +1,7 @@
++const mongoose = require('mongoose')
++const AuthorSchema = new mongoose.Schema({
++    name: String,
++    bio: String
++});
++
++module.exports = mongoose.model('Author', AuthorSchema)
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/models/Book.js b/15. mongodb-intermediate/models/Book.js
+new file mode 100644
+index 0000000..2b909d5
+--- /dev/null
++++ b/15. mongodb-intermediate/models/Book.js	
+@@ -0,0 +1,10 @@
++const mongoose = require('mongoose')
++const BookSchema = new mongoose.Schema({
++    title: String,
++    author: {
++        type: mongoose.Schema.Types.ObjectId,
++        ref: 'Author'
++    }
++})
++
++module.exports = mongoose.model('Book', BookSchema);
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/models/Product.js b/15. mongodb-intermediate/models/Product.js
+new file mode 100644
+index 0000000..d575b02
+--- /dev/null
++++ b/15. mongodb-intermediate/models/Product.js	
+@@ -0,0 +1,11 @@
++const mongoose = require('mongoose');
++
++const ProductSchema = new mongoose.Schema({
++    name: String,
++    category: String,
++    price: Number,
++    inStock: Boolean,
++    tags: [String]
++})
++
++module.exports = mongoose.model('Product', ProductSchema);
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/routes/author-routes.js b/15. mongodb-intermediate/routes/author-routes.js
+new file mode 100644
+index 0000000..e69de29
+diff --git a/15. mongodb-intermediate/routes/book-routes.js b/15. mongodb-intermediate/routes/book-routes.js
+new file mode 100644
+index 0000000..8a6dea5
+--- /dev/null
++++ b/15. mongodb-intermediate/routes/book-routes.js	
+@@ -0,0 +1,10 @@
++const express = require('express');
++const { createAuthorController, createBookController, getBookController } = require('../controller/book-controller');
++const router = express();
++
++
++router.post('/author', createAuthorController)
++router.post('/', createBookController)
++router.get('/:id', getBookController);
++
++module.exports = router
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/routes/product-routes.js b/15. mongodb-intermediate/routes/product-routes.js
+new file mode 100644
+index 0000000..6459477
+--- /dev/null
++++ b/15. mongodb-intermediate/routes/product-routes.js	
+@@ -0,0 +1,9 @@
++const express = require('express');
++const { insertSampleProducts, getProductStats, getProductAnalysis } = require('../controller/product-controller');
++const router = express.Router()
++
++router.post('/', insertSampleProducts)
++router.get('/', getProductStats);
++router.get('/analysis', getProductAnalysis)
++
++module.exports = router;
+\ No newline at end of file
+diff --git a/15. mongodb-intermediate/server.js b/15. mongodb-intermediate/server.js
+new file mode 100644
+index 0000000..2385089
+--- /dev/null
++++ b/15. mongodb-intermediate/server.js	
+@@ -0,0 +1,19 @@
++require('dotenv').config();
++const express = require('express');
++const { connectToDB } = require('./database/db');
++const app = express()
++const productRoutes = require('./routes/product-routes')
++const bookRoutes = require('./routes/book-routes')
++
++const PORT = process.env.PORT || 3000;
++
++app.use(express.json());
++
++connectToDB();
++
++app.use('/api/product', productRoutes);
++app.use('/api/book', bookRoutes)
++
++app.listen(PORT, () => {
++    console.log("Server is running on port: ", PORT)
++})
+\ No newline at end of file
+diff --git a/package-lock.json b/package-lock.json
+index cdcf4ea..bcb70fd 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -9,6 +9,7 @@
+       "version": "1.0.0",
+       "license": "ISC",
+       "dependencies": {
++        "dotenv": "^17.2.3",
+         "mongoose": "^9.1.5"
+       }
+     },
+@@ -45,6 +46,18 @@
+         "node": ">=20.19.0"
+       }
+     },
++    "node_modules/dotenv": {
++      "version": "17.2.3",
++      "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.2.3.tgz",
++      "integrity": "sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==",
++      "license": "BSD-2-Clause",
++      "engines": {
++        "node": ">=12"
++      },
++      "funding": {
++        "url": "https://dotenvx.com"
++      }
++    },
+     "node_modules/kareem": {
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/kareem/-/kareem-3.0.0.tgz",
+diff --git a/package.json b/package.json
+index eea20e7..1c11c02 100644
+--- a/package.json
++++ b/package.json
+@@ -19,6 +19,7 @@
+   },
+   "homepage": "https://github.com/lennne/node-js-backend#readme",
+   "dependencies": {
++    "dotenv": "^17.2.3",
+     "mongoose": "^9.1.5"
+   }
+ }

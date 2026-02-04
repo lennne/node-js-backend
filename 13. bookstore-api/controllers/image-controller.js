@@ -1,5 +1,6 @@
 const Image = require("../models/Image")
 const {uploadToCloudinary} = require('../helpers/cloudinaryHelper')
+const cloudinary = require('../config/cloudinary');
 const fs = require('fs')
 
 
@@ -30,7 +31,7 @@ const uploadImageController = async(req, res) => {
         // fs.unlinkSync(req.file.path)
 
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Image uploaded successfully',
             image: newlyUploadedImage
@@ -39,7 +40,7 @@ const uploadImageController = async(req, res) => {
         
     }catch(error){
         console.log("Error uploading image -> ", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Something went wrong! Please try again "
         })
@@ -51,14 +52,59 @@ const getImagesController = async(req, res) => {
         const images = await Image.find({});
 
         if(images){
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 data: images
             })
         }
     } catch (error) {
         console.log("Error fetching image -> ", error);
-        res.status(500).json({
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong! Please try again "
+        })
+    }
+}
+
+const deleteImageController = async (req, res) => {
+    try {
+        //get the user which is deleting the image
+        const getCurrentIdOfImageToBeDeleted = req.params.id;
+        const userId = req.userInfo.userId;
+
+
+
+        //get the image id to find out whether the user deleting the image was the person that created the image
+        const image = await Image.findById(getCurrentIdOfImageToBeDeleted);
+
+        if(!image){
+            return res.status(400).json({
+                success: false,
+                message: "Resource not found"
+            })
+        }
+        
+        if(image.uploadedBy.toString() !== userId){
+            return res.status(400).json({
+                success: false,
+                message: "You are not allowed to delete this resource because you did not upload it"
+            })
+        }
+
+        //delete froom cloudinary storage, once that is successful then delete from database
+        await cloudinary.uploader.destroy(image.publicId);
+
+        //delete this image from mongodb database
+        await Image.findByIdAndDelete(getCurrentIdOfImageToBeDeleted)
+
+        return res.status(200).json({
+            success: false,
+            message: "Deleted Image Successfully"
+        })
+                
+    }catch(error){
+           console.log("Error Deleting image -> ", error);
+        return res.status(500).json({
             success: false,
             message: "Something went wrong! Please try again "
         })
@@ -67,5 +113,6 @@ const getImagesController = async(req, res) => {
 
 module.exports = {
     uploadImageController,
-    getImagesController
+    getImagesController,
+    deleteImageController
 }
