@@ -1,6 +1,5 @@
 const requestLogger = (req, res, next) => {
     const timeStamp = new Date().toISOString();
-    console.log(req)
     const method = req.method;
     const url = req.url;
     const userAgent = req.get('User-Agent')
