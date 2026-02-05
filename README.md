@@ -1,4 +1,4 @@
-```markdown
+
 # Node.js Backend Learning Journey
 
 A comprehensive, module-based repository documenting my progression from Node.js fundamentals to advanced API architecture. This project serves as a structured curriculum for building scalable, secure, and modern backend systems.
@@ -99,3 +99,4 @@ This repo includes specialized modules for high-performance data handling:
 *Master of Applied Science Student | Full-Stack Developer*
 
 ---
+
