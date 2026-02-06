@@ -38,7 +38,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 //  });
 
 const globalErrorHandler = (err, req, res, next) => {
-    console.error(err.stack); //log the error stack 
+    console.error("error: ", err.stack); //log the error stack 
     if(err instanceof APIError){
         return res.status(error.statusCode).json({
             status: 'Error',

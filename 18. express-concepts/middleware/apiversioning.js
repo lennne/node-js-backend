@@ -1,10 +1,11 @@
 //url versioning -> checks the version passed in the header
 const urlVersioning = (version) => (req, res, next) => {
+    console.log(req.path)
     if(req.path.startsWith(`/api/${version}`)){
         next()
     }else{
         return res.status(400).json({
-            success: failure,
+            success: "failure",
             error: 'API version is not supported'
         })
     }
