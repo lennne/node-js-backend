@@ -1,7 +1,7 @@
 {
   "name": "module-system",
   "version": "1.0.0",
-  "description": "",
+  "description": "A comprehensive, module-based repository documenting my progression from Node.js fundamentals to advanced API architecture. This project serves as a structured curriculum for building scalable, secure, and modern backend systems.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
