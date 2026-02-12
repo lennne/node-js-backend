@@ -13,7 +13,7 @@ const logger = winston.createLogger({
     transports: [ // this specifies the transport(output destination) for our logs
         new winston.transports.Console({ //for instance we specify here that we want the logs in our console
             format : winston.format.combine( // and this is the formaat for the logs appearing in the console
-                winston.format.colorize, // for better visibility we use colorize
+                winston.format.colorize(), // for better visibility we use colorize
                 winston.format.simple() // and this is simple logs
             ),
         }),

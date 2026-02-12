@@ -1,11 +1,12 @@
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const RefreshToken = require('../models/RefreshToken')
 
 const generateTokens = async (user) => {
     const accessToken = jwt.sign({
         userId : user._id,
         username : user.username
-    }, process.env.JWT_SECRET, {expiriesIn : '60m'}) // we set it to a lower duration like 10 minutes,
+    }, process.env.JWT_SECRET, {expiresIn : '60m'}) // we set it to a lower duration like 10 minutes,
     //  and rather on the client side after 5 minutes we do something like, show an alert, 
     // to know if the user is still active, if they're not we log them out, and they have to use
     //  their refresh token. if they are they would just move their mouse

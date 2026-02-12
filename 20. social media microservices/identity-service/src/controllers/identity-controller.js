@@ -1,7 +1,7 @@
 const User = require('../models/User')
 const generateTokens = require('../utils/generateToken')
 const logger = require('../utils/logger')
-const validateRegistration = require('../utils/validation')
+const {validateRegistration} = require('../utils/validation')
 
 //user registration
 const registerUser = async (req, res) => {
@@ -11,7 +11,7 @@ const registerUser = async (req, res) => {
         const {error} = validateRegistration(req.body)
 
         if (error){
-            logger.warn('Validation error', error.details[0].message)
+            logger.warn(`Validation error: ${error.details[0].message}`);
             return res.status(400).json({
                 success : false,
                 message : error.details[0].message
@@ -43,7 +43,7 @@ const registerUser = async (req, res) => {
         })
 
     }catch(error){
-        logger.warn('Registration Error Occured');
+        logger.warn('Registration Error Occured', error);
 
         return res.status(400).json({
             success: false,
