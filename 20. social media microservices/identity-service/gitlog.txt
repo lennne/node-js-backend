@@ -1,0 +1,331 @@
+diff --git a/20. social media microservices/identity-service/package-lock.json b/20. social media microservices/identity-service/package-lock.json
+index a412395..d8997b1 100644
+--- a/20. social media microservices/identity-service/package-lock.json	
++++ b/20. social media microservices/identity-service/package-lock.json	
+@@ -20,6 +20,7 @@
+         "jsonwebtoken": "^9.0.3",
+         "mongoose": "^9.2.1",
+         "rate-limit-redis": "^4.3.1",
++        "rate-limiter-flexible": "^9.1.1",
+         "winston": "^3.19.0"
+       },
+       "devDependencies": {
+@@ -1609,6 +1610,12 @@
+         "express-rate-limit": ">= 6"
+       }
+     },
++    "node_modules/rate-limiter-flexible": {
++      "version": "9.1.1",
++      "resolved": "https://registry.npmjs.org/rate-limiter-flexible/-/rate-limiter-flexible-9.1.1.tgz",
++      "integrity": "sha512-imxFjzPCmvDLMe7d2tsgiSQvs5EI2fI9SNymmslAfOqznZhsZ+PqbIjIYKpuSbd3pKovR1aMG47qfCLIO/adVg==",
++      "license": "ISC"
++    },
+     "node_modules/raw-body": {
+       "version": "3.0.2",
+       "resolved": "https://registry.npmjs.org/raw-body/-/raw-body-3.0.2.tgz",
+diff --git a/20. social media microservices/identity-service/package.json b/20. social media microservices/identity-service/package.json
+index a961e42..baf14d4 100644
+--- a/20. social media microservices/identity-service/package.json	
++++ b/20. social media microservices/identity-service/package.json	
+@@ -27,6 +27,7 @@
+     "jsonwebtoken": "^9.0.3",
+     "mongoose": "^9.2.1",
+     "rate-limit-redis": "^4.3.1",
++    "rate-limiter-flexible": "^9.1.1",
+     "winston": "^3.19.0"
+   }
+ }
+diff --git a/20. social media microservices/identity-service/readMe.md b/20. social media microservices/identity-service/readMe.md
+index 3066f19..f903355 100644
+--- a/20. social media microservices/identity-service/readMe.md	
++++ b/20. social media microservices/identity-service/readMe.md	
+@@ -24,4 +24,16 @@ This is our identity service, it is going to handle identification and authentic
+ 
+  ### Project Setup
+ 1. Set up database
+-2. Set up .env file for database
+\ No newline at end of file
++2. Set up database URI in .env file
++3. Set up utility functions in utils folder, e.g logger
++4. Set up Centralized Logger for server
++5. Set up errorHandler Logger for middleware
++6. Set up Models
++7. Set up Controllers 
++    - Set up user authentication
++    - Set up data validation
++8. Set up Routers
++9. Set up server application
++10. Set up Redis Client
++11. Set up Rate limiting no Redis Client
++12. Set up Rate limiting on Endpoints
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/controllers/identity-controller.js b/20. social media microservices/identity-service/src/controllers/identity-controller.js
+new file mode 100644
+index 0000000..a9f0d17
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/controllers/identity-controller.js	
+@@ -0,0 +1,64 @@
++const User = require('../models/User')
++const generateTokens = require('../utils/generateToken')
++const logger = require('../utils/logger')
++const validateRegistration = require('../utils/validation')
++
++//user registration
++const registerUser = async (req, res) => {
++    logger.info('Registration endpoint hit...')
++    try{
++        //validate the schema -> check if you're getting the correct information or noot
++        const {error} = validateRegistration(req.body)
++
++        if (error){
++            logger.warn('Validation error', error.details[0].message)
++            return res.status(400).json({
++                success : false,
++                message : error.details[0].message
++            })
++        }
++
++        const {email, password, username } = req.body;
++        
++        let user = await User.findOne({ $or : [{email}, {username}]})
++        if(user) {
++            logger.warn("User already exists!")
++            return res.status(400).json({
++                success: false,
++                message: "User already exists"
++            })
++        }
++
++        user = new User({username, email, password});
++        await user.save();
++        logger.warn("User saved successfully", user._id);
++
++        const {accessToken, refreshToken} = await generateTokens(user)
++
++        return res.status(201).json({
++            success : true,
++            message : "User registered successfully",
++            accessToken,
++            refreshToken
++        })
++
++    }catch(error){
++        logger.warn('Registration Error Occured');
++
++        return res.status(400).json({
++            success: false,
++            message: 'Internal server error '
++        })
++    }
++}
++
++
++//user login
++
++//refresh token
++
++//logout
++
++
++
++module.exports = { registerUser }
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/db/db.js b/20. social media microservices/identity-service/src/db/db.js
+new file mode 100644
+index 0000000..40306fc
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/db/db.js	
+@@ -0,0 +1,11 @@
++require('dotenv').config()
++
++const mongoose = require('mongoose')
++
++async function connectToDB(){
++    mongoose.connect(process.env.MONGO_URI).
++    then(() => logger.info('connected to mongodb')).
++    catch((e) => logger.error('Mongo connection error', e))
++}
++
++module.exports = connectToDB 
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/middleware/errorHandler.js b/20. social media microservices/identity-service/src/middleware/errorHandler.js
+new file mode 100644
+index 0000000..c0ffa2f
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/middleware/errorHandler.js	
+@@ -0,0 +1,12 @@
++//retrieve the logger
++const logger = require('../utils/logger')
++
++const errorHandler = (err, req, res, next) => {
++    logger.error(err.stack)
++
++    res.status(err.status || 500).json({
++        message: err.message || 'Internal server error'
++    })
++}
++
++module.expoorts = errorHandler; 
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/models/RefreshToken.js b/20. social media microservices/identity-service/src/models/RefreshToken.js
+new file mode 100644
+index 0000000..275fb0c
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/models/RefreshToken.js	
+@@ -0,0 +1,24 @@
++const mongoose = require('mongoose');
++
++const refreshTokenSchema = new mongoose.schema({
++    token: {
++        type : String,
++        required : true,
++        unique : true
++    },
++    user : {
++        type : mongoose.Schema.Types.ObjectId,
++        ref : 'User',
++        required: true
++    },
++    expiresAt : {
++        type: Date,
++        required : true
++    }
++}, { timestamps : true});
++
++refreshTokenSchema.index({expiresAt : 1}, {expireAfterSeconds : 0})
++
++const RefreshToken = mongoose.model('RefreshToken', refreshTokenSchema)
++
++module.exports = RefreshToken;
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/routes/identity-service.js b/20. social media microservices/identity-service/src/routes/identity-service.js
+new file mode 100644
+index 0000000..4f604c5
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/routes/identity-service.js	
+@@ -0,0 +1,9 @@
++const express = require('express');
++const { registerUser } = require('../controllers/identity-controller');
++const router = express.Router();
++
++
++
++router.post('/register', registerUser)
++
++module.exports = router
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/server.js b/20. social media microservices/identity-service/src/server.js
+index e69de29..0976a32 100644
+--- a/20. social media microservices/identity-service/src/server.js	
++++ b/20. social media microservices/identity-service/src/server.js	
+@@ -0,0 +1,56 @@
++const express = require('express');
++const app = express()
++const helmet = require('helmet')
++const { RateLimiterRedis } = require('rate-limiter-flexible') 
++const Redis = require('ioredis ')
++
++const logger = require('./utils/logger')
++const connectToDB = require('./db/db');
++
++connectToDB()
++
++
++const redisClient = new Redis(process.env.REDIS_URL)
++
++//MIDDLEWARE
++
++//Helmet package for security
++app.use(helmet()) //helmet helps secure the express app thereby improvin security
++
++//Cors package for cross origin policy
++app.use(cors())
++
++//json package for parsing data to json format
++app.use(express.json())
++
++app.use((req, res, next) => {
++    logger.info(`Received ${req.method} request to ${req.url }`)
++    logger.info(`Request body, ${req.body}`)
++    next()
++})
++
++//DDos protection and rate limiting
++const rateLimiter = new RateLimiterRedis({
++    storeClient: redisClient, //this stores the redis store client
++    //NB: your redis has to be in a connected and available state
++    keyPrefix : 'middleware', //it's a prefix key that is added to your redix keys for rate limiting,
++    //  this helps distinguish rate limiting data from other redis data
++    points : 10, // this refers to the maximum number of requests an IP address can make in a certain duration
++    duration : 1 // this ratelimiter means you can make 10 requests in 1 second
++})
++
++app.use((req,res, next) => {
++    rateLimiter.consume(req.ip).then(() => next()).catch(() => {
++        logger.warn(`Raate limit exceeded for IP: ${req.ip}`)
++        res.status(429).json({
++            success: false,
++            message: "Too many requests"
++        })
++    })
++})
++
++ 
++
++app.listen(PORT, ()=> {
++
++})
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/utils/generateToken.js b/20. social media microservices/identity-service/src/utils/generateToken.js
+new file mode 100644
+index 0000000..04e43c6
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/utils/generateToken.js	
+@@ -0,0 +1,26 @@
++const jwt = require('jsonwebtoken')
++const crypto = require('crypto')
++
++const generateTokens = async (user) => {
++    const accessToken = jwt.sign({
++        userId : user._id,
++        username : user.username
++    }, process.env.JWT_SECRET, {expiriesIn : '60m'}) // we set it to a lower duration like 10 minutes,
++    //  and rather on the client side after 5 minutes we do something like, show an alert, 
++    // to know if the user is still active, if they're not we log them out, and they have to use
++    //  their refresh token. if they are they would just move their mouse
++
++    const refreshToken = crypto.randomBytes(40).toString('hex'); // this creates a very complex token
++    const expiresAt = new Date();
++    expiresAt.setDate(expiresAt.getDate() + 7) // refresh token expires in 7 days
++
++    await RefreshToken.create({
++        token : refreshToken,
++        user : user._id,
++        expiresAt
++    })
++
++    return {accessToken, refreshToken}
++}
++
++module.exports = generateTokens
+\ No newline at end of file
+diff --git a/20. social media microservices/identity-service/src/utils/validation.js b/20. social media microservices/identity-service/src/utils/validation.js
+new file mode 100644
+index 0000000..75044ce
+--- /dev/null
++++ b/20. social media microservices/identity-service/src/utils/validation.js	
+@@ -0,0 +1,13 @@
++const Joi = require('joi')
++
++const validateRegistration = (data) => {
++    const schema = Joi.object({
++        username : Joi.string().min(3).max(50).required,
++        email : Joi.string().email().required(),
++        password :  Joi.string().min(6).required()
++    })
++
++    return schema.validate(data)
++}
++
++module.exports - { validateRegistration }
+\ No newline at end of file
