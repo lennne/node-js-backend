@@ -27,12 +27,14 @@ The repository is organized chronologically. Each folder represents a specific m
 ## Tech Stack
 
 - **Runtime:** Node.js
+- **Validation:** Joy
 - **Framework:** Express.js
+- **Distributed Systems:** express-http-proxy, Redis (ioredis), Winston (Structured Logging)
 - **API Styles:** REST & GraphQL (Apollo Server)
-- **Database:** MongoDB (via Mongoose)
-- **Security:** JWT, Bcrypt.js, AES-256 Encryption
-- **Storage:** Cloudinary & Local File System Streams
+- **Security Suite:** Express.js, JWT, Bcrypt.js, AES-256 Encryption, Argon2, Rate-Limiter-Flexible, Helmet.js
+- **Storage & Database:** Cloudinary & Local File System Streams, MongoDB (Mongoose)
 - **Tools:** Multer, Zlib (Gzip), Crypto, Dotenv
+
 
 ---
 
@@ -64,6 +66,50 @@ This repo includes specialized modules for high-performance and low-level Node.j
 * **Aggregation Pipeline:** Complex data analysis (Average prices, stock stats) directly within MongoDB.
 
 * **GraphQL Implementation:** Moving away from REST to a typed, single-endpoint system using Apollo Server.
+
+### Low-Level Runtime Mastery (Module 17-18)
+Deep dives into the Node.js runtime for building high-performance utilities.
+* **Crypto Stream Pipeline:** A production-grade tool that reads files, compresses them via zlib, and encrypts them using AES-256-CBC on the fly with zero memory overhead.
+
+* **The Event Loop Visualizer:** A script that maps out the exact execution order of Microtasks and Macrotasks to solve concurrency bugs.
+
+### Performance & Caching Lab (Module 19)
+High-speed data handling projects demonstrating the power of in-memory storage.
+
+* **Redis Pipelining:** A performance comparison project proving how batching commands reduces network latency by over 90%.
+
+* **Transaction Logic:** A banking-style simulation using .multi() and .exec() to ensure "All-or-Nothing" data integrity.
+
+* **Real-time Pub/Sub:** A messaging demo showing how services communicate asynchronously without direct dependencies.
+
+
+### Distributed Microservices Architecture (Module 20)
+A social media backend split into decoupled services to ensure independent scalability and high availability.
+
+#### Application Services
+* **Identity Service:** A standalone bouncer handling secure registration and session persistence using Argon2 and TTL-indexed Refresh Tokens.
+
+* **API Gateway:** A single entry point using express-http-proxy to route external traffic (Port 3000) to internal services (Port 3001, etc.) while centralizing auth validation.
+
+* **Observability:** Distributed logging via Winston, creating structured JSON logs for cross-service debugging.
+
+
+#### Database Schema & Relationships
+The Identity Service uses a referenced data model to separate persistent user data from temporary session data.
+
+* **User Model (models/User.js):**  
+ Stores the primary identity and security credentials.    
+
+    * ***Fields:*** username, email, password.
+
+    * ***Security:*** Implements a pre-save hook for Argon2 hashing and a custom method for password verification.
+
+* **Refresh Token Model (models/RefreshToken.js):**  
+Handles session persistence and security.
+
+    * ***Relationship:*** Many-to-One (ref: 'User'). Each user can have multiple active sessions/tokens (e.g., mobile and desktop).
+
+    * ***Automatic Cleanup:*** Uses a TTL Index on the expiresAt field. MongoDB automatically deletes documents once the expiration date is reached, ensuring the database doesn't grow indefinitely with stale sessions.
 
 ---
 
