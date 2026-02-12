@@ -18,6 +18,9 @@ The repository is organized chronologically. Each folder represents a specific m
 | **15** | MongoDB Intermediate | Aggregation Pipelines, Data Referencing (`.populate()`) |
 | **16** | Node.js GraphQL | Apollo Server, TypeDefs, Resolvers, Mutations |
 | **17** | **Advanced Node Concepts** | Event Loop Phases, Buffers, Streams, Crypto Pipeline |
+| **18** | **Express Concepts** | Middleware, Error Handling, API Versioning, Rate Limiting (Security), MVC Structure, Async Route Handling, Versioned Routing |
+| **19** | **Redis Mastery** | Pub/Sub, Pipelining (Performance), Atomic Transactions, ioredis|
+| **20** | **Microservices Architecture** | API Gateway Pattern, Service Isolation, Argon2 Hashing, Winston Logging, Redis Rate Limiting, Distributed Logging |
 
 ---
 
