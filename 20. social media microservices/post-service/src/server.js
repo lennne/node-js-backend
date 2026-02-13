@@ -1,6 +1,5 @@
 require('dotenv').config()
 const express = require('express')
-const mongoose = require('mongoose');
 const Redis = require('ioredis');
 const {RedisStore} = require('rate-limit-redis')
 const cors = require('cors')
