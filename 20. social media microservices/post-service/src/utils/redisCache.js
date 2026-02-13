@@ -1,4 +1,7 @@
 async function invalidatePostCache(req, input) {
+    const cachedKey = `post:${input}`;
+    await req.redisClient.del(cachedKey);
+
     //remove all the cache that starts with the cacheKeys
     // in the lifecycle of the create post request we execute the invalidatePostCache function after we have
     //saved the response in the database and before we send the response back

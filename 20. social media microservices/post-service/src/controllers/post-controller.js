@@ -99,13 +99,29 @@ const getAllPosts = async (req, res) => {
 
           const cacheKey = `post:${postId}`
           const cachedPost = await req.redisClient.get(cacheKey);
+          const parsedCachedPost = JSON.parse(cachedPost)
           if(cachedPost){
             return res.json({
                 success: true,
                 message: "Post fetched successfully",
-                ...cachedPost
+                parsedCachedPost
             })
           }
+
+          const post = await Post.findById(postId);
+          if(!post){
+            return res.status(400).json({
+                success: false,
+                message: "Post does not exist"
+            })
+          }
+
+          await req.redisClient.setex(cacheKey, 3600, JSON.stringify(post))
+          return res.json({
+            success: true,
+            message: "Post fetched Successfully",
+            post
+          })
 
     } catch (error) {
         logger.error('Error fetching post by ID', error)
@@ -117,4 +133,43 @@ const getAllPosts = async (req, res) => {
     }
 }
 
-module.exports = { createPost, getAllPosts }
+ const deletePost = async (req, res) => {
+    try {
+          const postId = req.params.id;
+          if(!postId){
+            return res.status(400).json({
+                success: false,
+                message: "ID is required",
+            })
+          }
+
+          const post = await Post.findOneAndDelete({
+            _id: postId,
+            user: req.user.userId
+          })
+
+          if(!post) {
+            return res.status(404).json({
+                message: "Post not found",
+                success: false,
+            })
+          }
+          await invalidatePostCache(req, postId)
+          
+          return res.json({
+            success: true,
+            message: "Post deleted Successfully",
+            post
+          })
+
+    } catch (error) {
+        logger.error('Error Deleting post by ID', error)
+
+        return res.status(500).json({
+            success: false,
+            message: "Error Deleting post by ID"
+        })
+    }
+}
+
+module.exports = { createPost, getAllPosts, getPost, deletePost }
