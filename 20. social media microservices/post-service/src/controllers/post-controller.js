@@ -1,12 +1,13 @@
 const Post = require('../models/Post');
 const logger = require('../utils/logger');
+const { invalidatePostCache } = require('../utils/redisCache');
 const { validateCreatePost } = require('../utils/validation');
 
 const createPost = async (req, res) => {
     logger.info(`Create Post endpoint hit...`)
     try {
         const {error} = validateCreatePost(req.body)
-        if (error){
+        if (error){ 
             logger.warn(`Validation error: ${error.details[0].message}`);
             return res.status(400).json({
                 success : false,
@@ -22,6 +23,10 @@ const createPost = async (req, res) => {
         });
 
         await newlyCreatedPost.save();
+
+        // invalidate(delete) the cached posts in the redis memory
+        invalidatePostCache(req, newlyCreatedPost._id.toString());
+        
         logger.info(`Post created successfully ${newlyCreatedPost}`)
         res.status(201).json({
             success: true,
@@ -40,7 +45,38 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
     try {
+          //cache using redis client, invalidate the cache whenever we create or delete a post
+          const page = parseInt(req.query.page) || 1 ;
+          const limit = parseInt(req.query.limit) || 10;
+          const startIndex = ( page - 1) * limit;
           
+          //create a cacheKey
+          const cacheKey = `posts:${page}:${limit}`;
+          const cachedPosts = await req.redisClient.get(cacheKey) // if there are any posts present in cache
+          if(cachedPosts){
+            return res.json(JSON.parse(cachedPosts))
+          }
+
+          const posts = await Post.find({}).sort({createdAt : -1}).skip(startIndex).limit(limit);
+          const totalNumberOfPosts = await Post.countDocuments()
+
+          const result = {
+            posts, 
+            currentpage : page,
+            totalPages : Math.ceil(totalNumberOfPosts/limit),
+            totalPosts : totalNumberOfPosts
+          }
+
+          // save your posts in redis cache
+          // we pass in a time limit of 5 minutes(300s), meaning that after the data has been saved, 
+          // it should be deleted after 5 minutes - in other words, the data should be kept for only 5 minutes
+          await req.redisClient.setex(cacheKey, 300, JSON.stringify(result))
+
+          res.json({
+            success: true,
+            message: "Posts fetched successfully",
+            ...result
+          })
     } catch (error) {
         logger.error('Error fetching posts', error)
 
@@ -53,7 +89,24 @@ const getAllPosts = async (req, res) => {
 
  const getPost = async (req, res) => {
     try {
-          
+          const postId = req.params.id;
+          if(!postId){
+            return res.status(400).json({
+                success: false,
+                message: "ID is required",
+            })
+          }
+
+          const cacheKey = `post:${postId}`
+          const cachedPost = await req.redisClient.get(cacheKey);
+          if(cachedPost){
+            return res.json({
+                success: true,
+                message: "Post fetched successfully",
+                ...cachedPost
+            })
+          }
+
     } catch (error) {
         logger.error('Error fetching post by ID', error)
 
@@ -64,4 +117,4 @@ const getAllPosts = async (req, res) => {
     }
 }
 
-module.exports = { createPost }
+module.exports = { createPost, getAllPosts }
