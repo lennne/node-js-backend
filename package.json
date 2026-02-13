@@ -25,5 +25,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
-  }
+  },
+  "workspaces": [
+    "post-service",
+    "search-service"
+  ]
 }

@@ -10,6 +10,7 @@ const proxy = require('express-http-proxy')
 
 const logger = require('./utils/logger')
 const errorHandler = require('./middleware/errorHandler')
+const validateToken = require('./middleware/authMiddleware')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -85,11 +86,25 @@ app.use('/v1/auth', proxy(process.env.IDENTITY_SERVICE_URL, {
     }
 }, ));
 
+//setting up proxy for our post service
+app.use('/v1/post', validateToken, proxy(process.env.POST_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator : (proxyReqOpts, srcReq) => { 
+        proxyReqOpts.headers["content-type"] = "application/json"
+        proxyReqOpts.headers["x-user-id"] = srcReq.user.userId //new change, we get the userId from authmiddleware and then assign it to the headers
+        return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => { 
+        logger.info(`Response received from Post service: ${proxyRes.statusCode}`)
+        return proxyResData;
+    }
+}, ));
 
 app.use(errorHandler)
 
 app.listen(PORT, () => {
     logger.info(`API Gateway is running on port ${PORT}`)
     logger.info(`Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`)
+    logger.info(`Post service is running on port ${process.env.POST_SERVICE_URL}`)
     logger.info(`Redis Url ${process.env.REDIS_URL}`)
 })

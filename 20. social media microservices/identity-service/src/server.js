@@ -49,7 +49,7 @@ const rateLimiter = new RateLimiterRedis({
 
 app.use((req,res, next) => {
     rateLimiter.consume(req.ip).then(() => next()).catch(() => {
-        logger.warn(`Raate limit exceeded for IP: ${req.ip}`)
+        logger.warn(`Rate limit exceeded for IP: ${req.ip}`)
         res.status(429).json({
             success: false,
             message: "Too many requests"
@@ -64,7 +64,7 @@ const sensitiveEndpointsLimiter = rateLimit({
     standardHeaders : true, // whether you want to include the rate limiting info in the response headers or not,
     //  this also allows the client to see how many requests they have in their current time window
     legacyHeaders : false,
-    handler : (req, res) => {
+    handler : (req, res) => { 
         logger.warn(`Sensitive endpoint rate limit exceeded for IP: ${req.ip} `)
         res.status(429).json({
             success: false,

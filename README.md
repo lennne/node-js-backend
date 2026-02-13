@@ -27,7 +27,7 @@ The repository is organized chronologically. Each folder represents a specific m
 ## Tech Stack
 
 - **Runtime:** Node.js
-- **Validation:** Joy
+- **Validation:** Joi 
 - **Framework:** Express.js
 - **Distributed Systems:** express-http-proxy, Redis (ioredis), Winston (Structured Logging)
 - **API Styles:** REST & GraphQL (Apollo Server)
