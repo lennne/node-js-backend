@@ -14,7 +14,7 @@ const uploadMediaToCLoudinary = (file) => {
                 resource_type: "auto"
              },
              (error, result) => {
-                if(err){
+                if(error){
                     logger.error(`Error while uploading media to cloudinary ${error}`)
                     reject(error)
                 }else {
@@ -27,4 +27,14 @@ const uploadMediaToCLoudinary = (file) => {
     })
 }
 
-module.exports = {uploadMediaToCLoudinary}
+const deleteMediaFromCloudinary = async (publicId) => {
+    try {
+        const result = await cloudinary.uploader.destroy(publicId);
+        logger.info(`Media deleted successfully from cloud storage ${publicId}`)
+        return result;
+    } catch (error) {
+        logger.error(`Error deleting media from cloudinary`, error);
+    }
+}
+
+module.exports = { uploadMediaToCLoudinary, deleteMediaFromCloudinary }

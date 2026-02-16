@@ -7,6 +7,7 @@ const logger = require('../utils/logger')
 const uploadMedia = async (req, res) => {
     logger.info(`Starting media upload`)
     try{
+        console.log(req.file, "req.file ")
         if(!req.file){
             logger.error(`No file found. Add file and try again!`)
             return res.status(400).json({
@@ -15,10 +16,10 @@ const uploadMedia = async (req, res) => {
             })
         }
 
-        const {originalName, mimeType, buffer} = req.file
+        const {originalname, mimetype, buffer} = req.file
         const userId = req.user.userId
 
-        logger.info(`File details: name=${originalName}, type=${mimeType}`)
+        logger.info(`File details: name=${originalname}, type=${mimetype}`)
         logger.info('Uploading to cloudinary starting...')
 
         const cloudinaryUploadResults = await uploadMediaToCLoudinary(req.file )
@@ -26,8 +27,8 @@ const uploadMedia = async (req, res) => {
 
         const newlyCreatedMedia = new Media({
             publicId: cloudinaryUploadResults.public_id,
-            originalName,
-            mimeType,
+            originalName: originalname,
+            mimeType : mimetype,
             url : cloudinaryUploadResults.secure_url,
             userId
         });
@@ -41,13 +42,32 @@ const uploadMedia = async (req, res) => {
             url : newlyCreatedMedia.url,
         })
     }catch(error){
-        logger.warn('Uploading Error Occured', error);
+        logger.error('Error creating media', error);
 
         return res.status(500).json({
             success: false,
-            message: 'Internal server error '
+            message: 'Error creating media '
         })
     }
 }
 
-module.exports = { uploadMedia }
+const getAllMedia = async (req, res) => {
+    logger.info(`Starting media upload`)
+    try {
+        const result = await Media.find({})
+        res.json({
+            success: true,
+            message: "Successfully fetched data",
+            result
+        });
+    } catch (error) {
+         logger.error('Error fetching media', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching media '
+        })
+    }
+}
+
+module.exports = { uploadMedia, getAllMedia }

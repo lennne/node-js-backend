@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const logger = require('../utils/logger');
+const { publishEvent } = require('../utils/rabbitmq');
 const { invalidatePostCache } = require('../utils/redisCache');
 const { validateCreatePost } = require('../utils/validation');
 
@@ -143,6 +144,8 @@ const getAllPosts = async (req, res) => {
             })
           }
 
+
+
           const post = await Post.findOneAndDelete({
             _id: postId,
             user: req.user.userId
@@ -154,6 +157,14 @@ const getAllPosts = async (req, res) => {
                 success: false,
             })
           }
+
+          //publiish post delete method
+          await publishEvent('post.deleted', {
+            postId : post._id.toString(),
+            userId : req.user.userId,
+            mediaIds : post.mediaIds 
+          }); // the key is the action you're performing
+
           await invalidatePostCache(req, postId)
           
           return res.json({
