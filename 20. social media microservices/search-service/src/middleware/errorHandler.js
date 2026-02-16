@@ -5,7 +5,7 @@ const errorHandler = (err, req, res, next) => {
 
     return res.status(err.status || 500).json({
         success: false,
-        message: err.message || "Media Service Internal Server Error",
+        message: err.message || "Search Service Internal Server Error",
     })
 }
 

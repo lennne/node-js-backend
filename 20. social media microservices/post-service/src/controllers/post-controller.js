@@ -25,6 +25,13 @@ const createPost = async (req, res) => {
 
         await newlyCreatedPost.save();
 
+        await publishEvent('post.created', {
+            postId : newlyCreatedPost._id.toString(),
+            userId : newlyCreatedPost.user.toString(),
+            content : newlyCreatedPost.content,
+            createdAt : newlyCreatedPost.createdAt
+        });
+
         // invalidate(delete) the cached posts in the redis memory
         invalidatePostCache(req, newlyCreatedPost._id.toString());
         
